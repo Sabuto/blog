@@ -3,7 +3,7 @@
 use Illuminate\Support\Str;
 
 return [
-    'baseUrl' => '',
+    'baseUrl' => 'https://sabuto.github.io/',
     'production' => false,
     'siteName' => 'Robs Ramblings',
     'siteDescription' => 'A general blog about the things I enjoy',
