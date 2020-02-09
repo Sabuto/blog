@@ -1,0 +1,161 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>Robs Ramblings</title>
+    <link href="https://my-jigsaw-blog.com" />
+    <link type="application/atom+xml" rel="self" href="https://my-jigsaw-blog.com/blog/feed.atom" />
+    <updated>2020-02-09T19:05:15+00:00</updated>
+    <id>https://my-jigsaw-blog.com/blog/feed.atom</id>
+    <author>
+        <name>Robert Dunne (Sabuto)</name>
+    </author>
+                <entry>
+    <id>https://my-jigsaw-blog.com/blog/creating-a-hassio-addon</id>
+    <link type="text/html" rel="alternate" href="https://my-jigsaw-blog.com/blog/creating-a-hassio-addon" />
+    <title>Creating a Hassio Addon</title>
+    <published>2020-02-05T00:00:00+00:00</published>
+    <updated>2020-02-05T00:00:00+00:00</updated>
+    <author>
+        <name>Robert Dunne</name>
+    </author>
+    <summary type="html">So I will preface this with, I am by no means an expert on this subject and I have had a lot of help from the community
+when I have ran into little niggles, mainly on the Discord server.
+
+You can find all of my addons at here (I only have two at the......</summary>
+    <content type="html"><![CDATA[
+        <p>So I will preface this with, I am by no means an expert on this subject and I have had a lot of help from the community
+when I have ran into little niggles, mainly on the <a href="https://discord.gg/kBfQAs">Discord</a> server.</p>
+
+<p>You can find all of my addons at <a href="https://github.com/sabuto/hassio-repo">here</a> (I only have two at the moment.)</p>
+
+<p>I want to walk you through why i built the addon, what frustrations i had and hopefully help others (all whilst being a bit interesting at the same time).</p>
+
+<p>So my first hassio addon was <a href="https://www.influxdata.com/time-series-platform/telegraf/">Telegraf</a> Which in itself is an aggregator of data. It collects information and sends it on (to multiple places). It works by adding outputs and inputs in the config
+file and then spinning up the instance. There are official Docker containers for this and can be spun up quite easily. I created this addon so people could have it all in one place
+i.e Home Assistant, It can integrate with the community addon influxdb (this means it send all of the data to influxdb). I then use Grafana to consume the information but it can be consumed however you would like.</p>
+
+<p>The <a href="https://developers.home-assistant.io/docs/en/hassio_addon_index.html">Docs</a> are great at explaining how to get set up, and how to get started.</p>
+
+<p>Addon's are there to provide a service, in the case of my addon it provides a way to gather data about the machine that is running. The addon can be written in any language and you can even write your own!</p>
+
+<p>To get started there are two options, either the local way as described <a href="https://developers.home-assistant.io/docs/en/hassio_addon_tutorial.html">here</a> or I prefer to do it via github.
+What i like to do is create a repo on github(or similar) and make it a dev repo, I like to name mine the same as what the public facing repo will be but dev at the end so for example my main repo 
+for my hassio addon is hassio-telegraf and my dev is hassio-telegraf-dev.</p>
+
+<p>The reason why i like to do it this way is because i can leverage github Actions to build and lint my files for me instead of using the host computer (which if it is a raspberry pi may not be powerfull enough to build the images).</p>
+
+<p>So in your repo in order to be able to set it up you need at least the following:
+* a folder within your repo with the name of the addon
+* within that folder you need:
+* Dockerfile - This is what the builder will use in order to make the addon
+* config.json - This is where we tell the addon what it needs access to and what options we want available
+* run.sh - I use this to do the processing and starting of the addon (you don't have to do it this way i just find it the easiest)</p>
+
+<p>Here is what i have:
+<a href="https://i.imgur.com/UMTOp5T.png"><img src="https://i.imgur.com/UMTOp5T.png" alt="Github-Dev" /></a></p>
+
+<p>The two additional items are:
+* build.json - I use this to use base images that are different from the default (more on that later)
+* telegraf.conf - This is the configuration file for the main addon</p>
+
+<p>For now don't worry about the other items i will get into them later on.</p>
+
+<p>Now that you have this repo set up you need to create one more repo (I know I Know!) and this will be the container repo so i call mine hassio-repo-dev
+In this you need:
+* repository.json
+* Folder where the addon config will live
+* In that folder you need:
+* config.json (This is actually the exact same file as the one in the previous repo.)</p>
+
+<p>Here is what mine looks like.
+<a href="https://i.imgur.com/r5VbB3v.png"><img src="https://i.imgur.com/r5VbB3v.png" alt="Github-Dev-Repo" /></a>
+I have:
+* CHANGELOG.md - I add a brief summary of changes here and link it to the release page for that tag, This enables it so when an update is available in Hassio a button appears next to update called Changelog and people can see what changes are made easily.
+* README.md - A Readme for how to use the addon, at the moment i have it exactly the same as the README in the main hassio-telegraf-dev repo but I want to shorten it down to a condensed version and then link to the main one.</p>
+
+<p>And Finally my addon repo folder looks like this:
+<a href="https://i.imgur.com/agQnfk4.png"><img src="https://i.imgur.com/agQnfk4.png" alt="Github-dev-mainrepo" /></a></p>
+
+<p>I will walk through each item so you can see what i use it for and then we will go in depth on how i use each file to make the addon work for me.</p>
+
+<ul>
+<li>.gitignore - This file is used to exclude files and folders from git when you are pushing from local - i used it to ignore .idea folder</li>
+<li>ISSUE_TEMPLATE.md - This file is ussed as a template when someone opens an issue, I use this so everything is uniform</li>
+<li>PULL_REQUEST_TEMPLATE.md - Same as above but for pull requests</li>
+<li>LICENSE.md - This is just a generic MIT license</li>
+<li>README.md - same as the readme in the above section</li>
+<li>renovate.json - This is the configuration for my renovate bot, it will suggest upping the dependancy version when needed.</li>
+</ul>
+
+<h2>Setting up a hello world example</h2>
+
+<p>After you have created your repo - github.com/yourusername/hello-world-hassio create the following files:</p>
+    ]]></content>
+</entry>
+            <entry>
+    <id>https://my-jigsaw-blog.com/blog/hello-world</id>
+    <link type="text/html" rel="alternate" href="https://my-jigsaw-blog.com/blog/hello-world" />
+    <title>Hello World</title>
+    <published>2020-02-01T00:00:00+00:00</published>
+    <updated>2020-02-01T00:00:00+00:00</updated>
+    <author>
+        <name>Robert Dunne</name>
+    </author>
+    <summary type="html">I guess i should introduce myself, I&#039;m Rob, I have been interested in lots of different things. This blog will mainly be about iot, home servers and Home Assistant
+
+I have experience writing code in different languages but mainly PHP. I am a backend......</summary>
+    <content type="html"><![CDATA[
+        <p>I guess i should introduce myself, I'm <a href="https://github.com/sabuto">Rob</a>, I have been interested in lots of different things. This blog will mainly be about iot, home servers and <a href="https://www.home-assistant.io/">Home Assistant</a></p>
+
+<p>I have experience writing code in different languages but mainly PHP. I am a backend developer at heart!</p>
+
+<p>I like to contribute to open source but i haven't really done much in regards to actual contributes, I have created a few <a href="https://github.com/sabuto/hassio-repo">addons</a> for Hassio.</p>
+
+<p>Anyway this was a brief introduction i will leave you with my current stack of Docker containers on my homelab server:
+<a href="https://i.imgur.com/xl3CQDT.png"><img src="https://i.imgur.com/xl3CQDT.png" alt="My Stack" /></a></p>
+
+<p>So in this stack we have:</p>
+
+<h2>Media Stack</h2>
+
+<p><a href="https://imgur.com/CgvlN8d.png"><img src="https://imgur.com/CgvlN8d.png" alt="Media Stack" /></a>
+In the Media Stack I have:
+* my plex for streaming media 
+* Radarr and Sonarr: for finding my media
+* Jackett for those parsing problems!
+* Portainer, This helps me manage my docker containers via a gui. This is not nessaserily a media item per se but I had this in the docker compose file.
+* Heimdall this is meant to be used so you can have everything in one place</p>
+
+<h2>Home Assistant Stack</h2>
+
+<p><a href="https://i.imgur.com/DjboqEt.png"><img src="https://i.imgur.com/DjboqEt.png" alt="My Home Assistant Stack" /></a>
+Now this is my main stack and why i set up this server, This stack is for my home assistant setup (hassio). I run hassio because i like docker and i like the ease of setting up the addons.</p>
+
+<p>So within this i have:</p>
+
+<ul>
+<li>ESP Home: in order to control my esps!</li>
+<li>Node Red for all of my automations</li>
+<li>Wireguard for a vpm for home.</li>
+<li>nginx for a reverse proxy so i can access my things easier.</li>
+<li>hassio google addon, this allows me to backup my home assistant data to google drive at a frequency i decide (every day at 1am)</li>
+<li>influxDB, this allows me to store certain data in an influxDB instance</li>
+<li>vsCode, this is for editing my files in the browser</li>
+<li>ssh so i can ssh into hassio</li>
+<li>grafana to display my metrics from the influxDB</li>
+<li>samba so i can explore the files remotely</li>
+<li>Zigbee2mqtt so i can use the zigbee devices in my home with HomeAssistant Locally</li>
+<li>DuckDNS so i can access my instance outside of my home</li>
+<li>Hassio Telegraf so i can use Telegraf to report data from my server to the influxDB instance (I have two running because i am developing an update for it)</li>
+<li>Mosquitto so I can have a mqtt instance on my server</li>
+<li>Pi-Home so i can have my own dns for ad filtering etc</li>
+<li>hassio_dns hassio's internal dns</li>
+<li>homeassistant this is the main docker container for hassio</li>
+<li>hassio_supervisor this is responsible for starting the different containers for hassio and making sure that everything is running smoothly.</li>
+</ul>
+
+<p>I also have a Shinobi container that is inactive at the moment, I have this because I was playing around with having some cctv camera's set up at home but never got around to installing them.</p>
+
+<p>I plan to add more and take some away, I have developed some addon's for Home Assistant myself which i expect will be the focus of a couple of blog posts.</p>
+    ]]></content>
+</entry>
+    </feed>
